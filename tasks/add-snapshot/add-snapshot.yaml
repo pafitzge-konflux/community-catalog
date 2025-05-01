@@ -1,0 +1,25 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: add-snapshot
+spec:
+  description: >-
+    Sample task to add json file to "workspace/snapshot.json"
+  params:
+    - name: snapshotJson
+      description: JSON of snapshot
+      type: string
+  workspaces:
+    - name: data
+      description: The workspace where the snapshot spec and data json files reside
+  steps:
+    - name: add-snapshot
+      image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+      script: |
+        #!/usr/bin/env sh
+        set -eux
+
+        cat > "$(workspaces.data.path)"/snapshot.json << EOF
+        $(params.snapshotJson)
+        EOF

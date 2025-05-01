@@ -1,0 +1,102 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-push-snapshot-digests-match
+spec:
+  description: |
+    Run the push-snapshot task with the source digest matching the destination digest.
+    No push will happen in this scenario.
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: setup
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      taskSpec:
+        workspaces:
+          - name: data
+        steps:
+          - name: setup-values
+            image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+            script: |
+              #!/usr/bin/env sh
+              set -eux
+
+              mkdir "$(workspaces.data.path)/results"
+              cat > "$(workspaces.data.path)/mapped_snapshot.json" << EOF
+              {
+                "application": "myapp",
+                "components": [
+                  {
+                    "name": "comp",
+                    "containerImage": "registry.io/image:tag",
+                    "repository": "registry.io/image",
+                    "tags": [
+                      "tag"
+                    ]
+                  }
+                ]
+              }
+              EOF
+
+              echo '{}' > "$(workspaces.data.path)"/data.json
+    - name: run-task
+      taskRef:
+        name: push-snapshot
+      params:
+        - name: snapshotPath
+          value: mapped_snapshot.json
+        - name: dataPath
+          value: data.json
+        - name: resultsDirPath
+          value: results
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      runAfter:
+        - setup
+    - name: check-result
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      taskSpec:
+        workspaces:
+          - name: data
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+            script: |
+              #!/usr/bin/env sh
+              set -eux
+
+              if [ -f "$(workspaces.data.path)/mock_cosign.txt" ]; then
+                echo Error: cosign was not expected to be called. Actual calls:
+                cat "$(workspaces.data.path)/mock_cosign.txt"
+                exit 1
+              fi
+
+              if [ "$(wc -l < "$(workspaces.data.path)/mock_skopeo.txt")" != 1 ]; then
+                echo Error: skopeo was expected to be called 1 time. Actual calls:
+                cat "$(workspaces.data.path)/mock_skopeo.txt"
+                exit 1
+              fi
+
+              if [ "$(wc -l < "$(workspaces.data.path)/mock_oras.txt")" != 2 ]; then
+                echo Error: oras was expected to be called 2 times. Actual calls:
+                cat "$(workspaces.data.path)/mock_oras.txt"
+                exit 1
+              fi
+
+              echo Make sure the results file was still written even though no push happened
+              test "$(jq -r '.images[0].name' "$(workspaces.data.path)/results/push-snapshot-results.json")" == "comp"
+              test "$(jq -r '.images[0].shasum' "$(workspaces.data.path)/results/push-snapshot-results.json")" == \
+                "sha256:0b770b6ec5414e841167266c96af42404e9f7049f72c21d0ab312e07c9403197"
+              test "$(jq -r '.images[0].urls | length' "$(workspaces.data.path)/results/push-snapshot-results.json")" \
+                == "1"
+              test "$(jq -r '.images[0].arches | length' \
+                "$(workspaces.data.path)/results/push-snapshot-results.json")" \
+                == "2"
+      runAfter:
+        - run-task

@@ -1,0 +1,121 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: test-push-snapshot-pushsourcecontainer-defaults
+spec:
+  description: |
+    Run the push-snapshot task with pushSourceContainer enabled via the defaults
+  workspaces:
+    - name: tests-workspace
+  tasks:
+    - name: setup
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      taskSpec:
+        workspaces:
+          - name: data
+        steps:
+          - name: setup-values
+            image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+            script: |
+              #!/usr/bin/env sh
+              set -eux
+
+              mkdir "$(workspaces.data.path)/results"
+              cat > "$(workspaces.data.path)"/snapshot.json << EOF
+              {
+                "application": "myapp",
+                "components": [
+                  {
+                    "name": "comp",
+                    "containerImage": "registry.io/image@sha256:abcdefg",
+                    "repository": "prod-registry.io/prod-location",
+                    "source": {
+                      "git": {
+                        "revision": "a51005b614c359b17a24317fdb264d76b2706a5a",
+                        "url": "https://github.com/abc/python-basic"
+                      }
+                    },
+                    "tags": [
+                      "testtag"
+                    ]
+                  }
+                ]
+              }
+              EOF
+
+              cat > "$(workspaces.data.path)"/data.json << EOF
+              {
+                "mapping": {
+                  "defaults": {
+                    "pushSourceContainer": true
+                  }
+                }
+              }
+              EOF
+    - name: run-task
+      taskRef:
+        name: push-snapshot
+      params:
+        - name: snapshotPath
+          value: snapshot.json
+        - name: dataPath
+          value: data.json
+        - name: retries
+          value: 0
+        - name: resultsDirPath
+          value: results
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      runAfter:
+        - setup
+    - name: check-result
+      workspaces:
+        - name: data
+          workspace: tests-workspace
+      taskSpec:
+        workspaces:
+          - name: data
+        steps:
+          - name: check-result
+            image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+            script: |
+              #!/usr/bin/env sh
+              set -eux
+
+              # The sha 570fd5a1e41b5545a24828be5a3df2e85e4a5a67703385f39594837e77e2478e is calculated
+              # from the origin image pull spec - see mocks.sh
+              cat > "$(workspaces.data.path)"/cosign_expected_calls.txt << EOF
+              copy -f registry.io/image:sha256-4c0020cf1fd28563704fb5f05396899faf8ae642b94950c72c6282a507df1a03.src\
+               prod-registry.io/prod-location:sha256-4c0020cf1fd28563704fb5f05396899faf8ae642b94950c72c6282a507df1a03.src
+              copy -f registry.io/image@sha256:abcdefg prod-registry.io/prod-location:testtag
+              copy -f registry.io/image:sha256-4c0020cf1fd28563704fb5f05396899faf8ae642b94950c72c6282a507df1a03.src\
+               prod-registry.io/prod-location:testtag-source
+              EOF
+
+              if [ "$(md5sum < "$(workspaces.data.path)"/cosign_expected_calls.txt)" \
+                != "$(md5sum < "$(workspaces.data.path)/mock_cosign.txt")" ]; then
+                echo "Error: Expected cosign calls do not match actual calls"
+                echo Actual calls:
+                cat "$(workspaces.data.path)/mock_cosign.txt"
+                echo Expected calls:
+                cat "$(workspaces.data.path)"/cosign_expected_calls.txt
+                exit 1
+              fi
+
+              if [ "$(wc -l < "$(workspaces.data.path)/mock_skopeo.txt")" != 1 ]; then
+                echo Error: skopeo was expected to be called 1 time. Actual calls:
+                cat "$(workspaces.data.path)/mock_skopeo.txt"
+                exit 1
+              fi
+
+              if [ "$(wc -l < "$(workspaces.data.path)/mock_oras.txt")" != 5 ]; then
+                echo Error: oras was expected to be called 5 times. Actual calls:
+                cat "$(workspaces.data.path)/mock_oras.txt"
+                exit 1
+              fi
+      runAfter:
+        - run-task

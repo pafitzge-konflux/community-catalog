@@ -1,0 +1,57 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: slack-pipeline
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: "Pushes an artifact to quay.io"
+  params:
+    - name: snapshotPath
+      type: string
+    - name: snapshotJson
+      type: string
+  workspaces:
+    - name: release-workspace
+  tasks:
+    - name: add-snapshot
+      taskRef:
+        resolver: "git"
+        params:
+          - name: url
+            value: https://github.com/Paul123111/community-catalog.git
+          - name: revision
+            value: development
+          - name: pathInRepo
+            value: tasks/add-snapshot/add-snapshot.yaml
+      params:
+        - name: snapshotJson
+          value: $(params.snapshotJson)
+      workspaces:
+        - name: data
+          workspace: release-workspace
+    - name: push-to-quay
+      taskRef:
+        resolver: "git"
+        params:
+          - name: url
+            value: https://github.com/Paul123111/community-catalog.git
+          - name: revision
+            value: development
+          - name: pathInRepo
+            value: tasks/push-to-quay-new/push-to-quay-new.yaml
+      params:
+        - name: snapshotPath
+          value: $(params.snapshotPath)
+        - name: snapshot
+          value: $(params.)
+      workspaces:
+        - name: data
+          workspace: release-workspace
+      runAfter:
+        - add-snapshot
+        
