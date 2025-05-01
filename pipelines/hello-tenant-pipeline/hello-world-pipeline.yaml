@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: my-tenant-pipeline
+spec:
+  params:
+    - name: release
+      type: string
+    - name: releasePlan
+      type: string
+    - name: snapshot
+      type: string
+  tasks:
+    - name: echo-resources
+      taskSpec:
+       steps:
+         - name: echo resources
+           image: ubuntu:latest
+           script: |
+             #!/usr/bin/env sh
+             echo "Release $(params.release)"
+             echo "ReleasePlan $(params.releasePlan)"
+             echo "Snapshot $(params.snapshot)"

@@ -1,0 +1,24 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: hello-pipeline
+spec:
+  description: Sample pipeline as an example for what a tenant pipeline could look like
+  params:
+    - name: name
+      type: string
+  tasks:
+    - name: hello-task
+      params:
+        - name: name
+          value: "$(params.name)"
+      taskRef:
+        resolver: "git"
+        params:
+          - name: url
+            value: https://github.com/Paul123111/community-catalog.git
+          - name: revision
+            value: development
+          - name: pathInRepo
+            value: tasks/hello-world-task/hello-task.yaml

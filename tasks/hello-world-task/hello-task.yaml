@@ -1,0 +1,22 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: hello-task
+spec:
+  description: >-
+    Sample task that prints "hello, [NAME]!"
+  params:
+    - name: name
+      description: Name of user
+  steps:
+    - name: hello-step
+      env:
+        - name: NAME
+          value: $(params.name)
+      image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+
+        echo "hello, ${NAME}!"

@@ -1,0 +1,49 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: push-to-quay
+spec:
+  description: >-
+    Tekton task to push snapshot images to quay.io using `cosign copy`
+  params:
+    - name: snapshotPath
+      description: Path to snapshot json
+      type: string
+  workspaces:
+    - name: data
+      description: The workspace where the snapshot spec and data json files reside
+  steps:
+    - name: push-to-quay
+      image: quay.io/konflux-ci/release-service-utils:066a63d25546239e79533b99c83ff521a045c819
+      script: |
+
+        # push_image() { # Expected arguments are [origin_digest, name, containerImage, repository, tag, platform]
+        #   cosign copy -f "$1" "$2:$3"
+        # }
+        get-resource "snapshot" $(params.SNAPSHOT) | jq .spec
+
+        SNAPSHOT_SPEC_FILE='$(workspaces.data.path)/$(params.snapshotPath)'
+
+        APPLICATION=$(jq -r '.application' "${SNAPSHOT_SPEC_FILE}")
+        NUM_COMPONENTS=$(jq '.components | length' "${SNAPSHOT_SPEC_FILE}")
+
+        #echo "$APPLICATION" "$NUM_COMPONENTS"
+
+        for ((i = 0; i < NUM_COMPONENTS; i++)); do
+
+          COMPONENT=$(jq -c --argjson i "$i" '.components[$i]' "${SNAPSHOT_SPEC_FILE}")
+          
+          CONTAINER_IMAGE=$(jq -r '.containerImage' <<< "$COMPONENT")
+          REPOSTIORY=$(jq -r '.repository' <<< "$COMPONENT")
+          IMAGE_TAGS=$(jq '.tags' <<< "$COMPONENT")
+
+          NUM_TAGS=$(jq '.tags | length' <<< "$COMPONENT")
+
+          echo "$NUM_TAGS"
+
+          for tag in $(jq -r '.[]' <<< "$IMAGE_TAGS"); do
+            cosign copy -f "$CONTAINER_IMAGE" "$REPOSTIORY:${tag}"
+          done
+
+        done
