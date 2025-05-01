@@ -1,0 +1,38 @@
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: slack-pipeline
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: release
+spec:
+  description: "Makes an app send a notification to Slack"
+  params:
+    - name: secretName
+      type: string
+    - name: secretKeyName
+      type: string
+  workspaces:
+    - name: release-workspace
+  tasks:
+    - name: send-to-slack
+      taskRef:
+        resolver: "git"
+        params:
+          - name: url
+            value: https://github.com/Paul123111/test-tenant-pipelines.git
+          - name: revision
+            value: development
+          - name: pathInRepo
+            value: task/notify-failure-on-slack.yaml
+      params:
+        - name: secretName
+          value: $(params.secretName)
+        - name: secretKeyName
+          value: $(params.secretKeyName)
+      workspaces:
+        - name: data
+          workspace: release-workspace
