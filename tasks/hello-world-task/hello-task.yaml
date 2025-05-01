@@ -1,0 +1,21 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: hello-task
+spec:
+  description: >-
+    Sample task that prints "hello, [NAME]!"
+  params:
+    - name: name
+      description: Name of user
+  steps:
+    - name: hello-step
+      env:
+        - name: NAME
+          value: $(params.name)
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+
+        echo "hello, ${NAME}!"

@@ -3,29 +3,22 @@ apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
   name: hello-pipeline
-  labels:
-    app.kubernetes.io/version: "0.1"
-  annotations:
-    tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/tags: release
 spec:
   description: Sample pipeline as an example for what a tenant pipeline could look like
   params:
     - name: name
       type: string
   tasks:
-    - name: create-tag1
+    - name: hello-task
       params:
         - name: NAME
           value: "$(params.name)"
-      taskSpec:
+      taskRef:
+        resolver: "git"
         params:
-          - name: NAME
-            type: string
-        steps:
-          - name: create-tag
-            image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
-            script: |
-              #!/usr/bin/env sh
-
-              echo hello, $(params.NAME)
+          - name: url
+            value: https://github.com/Paul123111/community-catalog.git
+          - name: revision
+            value: development
+          - name: pathInRepo
+            value: tasks/hello-world-task/hello-task.yaml
