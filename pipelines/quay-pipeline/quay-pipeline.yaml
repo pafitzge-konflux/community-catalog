@@ -9,7 +9,7 @@ metadata:
     tekton.dev/pipelines.minVersion: "0.12.1"
     tekton.dev/tags: release
 spec:
-  description: "Makes an app send a notification to Slack"
+  description: "Pushes an artifact to quay.io"
   params:
     - name: secretName
       type: string
@@ -18,16 +18,16 @@ spec:
   workspaces:
     - name: release-workspace
   tasks:
-    - name: send-to-slack
+    - name: push-to-quay
       taskRef:
         resolver: "git"
         params:
           - name: url
-            value: https://github.com/Paul123111/test-tenant-pipelines.git
+            value: https://github.com/Paul123111/community-catalog.git
           - name: revision
             value: development
           - name: pathInRepo
-            value: task/notify-failure-on-slack.yaml
+            value: tasks/push-to-quay/push-to-quay-task.yaml
       params:
         - name: secretName
           value: $(params.secretName)
