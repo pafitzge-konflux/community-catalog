@@ -11,7 +11,7 @@ spec:
   tasks:
     - name: hello-task
       params:
-        - name: NAME
+        - name: name
           value: "$(params.name)"
       taskRef:
         resolver: "git"
