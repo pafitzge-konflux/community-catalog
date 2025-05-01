@@ -32,11 +32,11 @@ spec:
             value: tasks/push-to-quay/push-to-quay-task.yaml
       params:
         - name: snapshotPath
-          value: "123"
+          value: $(params.snapshotPath)
         - name: dataPath
-          value: "123"
+          value: $(params.dataPath)
         - name: resultsDirPath
-          value: "123"
+          value: $(params.resultsDirPath)
       workspaces:
         - name: data
           workspace: release-workspace
