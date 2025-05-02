@@ -12,12 +12,12 @@ spec:
   description: |
     Run the push-snapshot task with pushSourceContainer enabled via the defaults
   workspaces:
-    - name: tests-workspace
+    - name: release-workspace
   tasks:
     - name: setup
       workspaces:
         - name: data
-          workspace: tests-workspace
+          workspace: release-workspace
       taskSpec:
         workspaces:
           - name: data
@@ -81,13 +81,13 @@ spec:
           value: results
       workspaces:
         - name: data
-          workspace: tests-workspace
+          workspace: release-workspace
       runAfter:
         - setup
     - name: check-result
       workspaces:
         - name: data
-          workspace: tests-workspace
+          workspace: release-workspace
       taskSpec:
         workspaces:
           - name: data
