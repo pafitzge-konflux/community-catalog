@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: test-push-snapshot-pushsourcecontainer-defaults
+  name: testing-pipeline
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
@@ -11,8 +11,8 @@ metadata:
 spec:
   description: |
     Run the push-snapshot task with pushSourceContainer enabled via the defaults
-  workspaces:
-    - name: tests-workspace
+  # workspaces:
+  #   - name: tests-workspace
   # tasks:
   #   - name: setup
   #     workspaces:
