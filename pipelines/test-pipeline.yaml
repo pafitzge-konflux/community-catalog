@@ -35,8 +35,8 @@ spec:
                 "components": [
                   {
                     "name": "comp",
-                    "containerImage": "registry.io/image@sha256:abcdefg",
-                    "repository": "prod-registry.io/prod-location",
+                    "containerImage": "quay.io/image@sha256:abcdefg",
+                    "repository": "quay.io/prod-location",
                     "source": {
                       "git": {
                         "revision": "a51005b614c359b17a24317fdb264d76b2706a5a",
