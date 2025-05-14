@@ -2,29 +2,28 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  labels:
-    app.kubernetes.io/version: "1.3.1"
-  annotations:
-    tekton.dev/pipelines.minVersion: "0.12.1"
-    tekton.dev/tags: "release"
-  name: send-slack-notification
+  name: notify-failure-on-slack
 spec:
   description: >-
     Sends message to Slack using postMessage API
   params:
     - name: secretName
-      description: |
-        Name of secret which contains authentication token for app
+      description: Name of secret which contains authentication token for app
     - name: secretKeyName
-      description: |
-        Name of key within secret which contains webhook URL
+      description: Name of key within secret which contains webhook URL
+    - name: RELEASE
+      description: release
+    # - name: namespace
+    #   description: Namespace of release
+    # - name: namespace
+    #   description: Namespace of release
   volumes:
     - name: slack-token
       secret:
         secretName: $(params.secretName)
         optional: true
   steps:
-    - name: send-message
+    - name: notify-failure
       image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
       volumeMounts:
         - name: slack-token
@@ -52,16 +51,17 @@ spec:
         fi
 
         # check for release status and check if a managed pipeline failed
-        RELEASESTATUS=$(kubectl get releases -n user-ns2 pipeline-release -o yaml | yq eval '.status.conditions.[].reason')
+        # TODO: make namespace and release parameters
+        RELEASESTATUS=$(get-resource "release" $(params.RELEASE) | jq .status.conditions[].reason)
 
         if [[ "$RELEASESTATUS" == *"Failed"* ]]; then
-          MESSAGE=$(kubectl get releases -n user-ns2 pipeline-release -o yaml | yq eval '.status.conditions.[].message' | awk NF)
+          MESSAGE=$(get-resource "release" $(params.RELEASE) | jq -r .status.conditions[].message | awk NF)
           
           # need 3 back-ticks around message for code-block
-          MESSAGE=$(echo "\`\`\`$MESSAGE\`\`\`" | jq -Rsa)
+          MESSAGE=$(echo "Managed pipelines failed: \`\`\`$MESSAGE\`\`\`" | jq -Rsa)
           
           cat > /tmp/release.json << EOF
-          {"text": $MESSAGE}
+        {"text": $MESSAGE}
         EOF
           # line above needs to be missing indentation
 
