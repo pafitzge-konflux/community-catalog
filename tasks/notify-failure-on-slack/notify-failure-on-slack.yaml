@@ -1,0 +1,77 @@
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: notify-failure-on-slack
+spec:
+  description: >-
+    Sends message to Slack using postMessage API
+  params:
+    - name: secretName
+      description: Name of secret which contains authentication token for app
+    - name: secretKeyName
+      description: Name of key within secret which contains webhook URL
+    - name: RELEASE
+      description: release
+    # - name: namespace
+    #   description: Namespace of release
+    # - name: namespace
+    #   description: Namespace of release
+  volumes:
+    - name: slack-token
+      secret:
+        secretName: $(params.secretName)
+        optional: true
+  steps:
+    - name: notify-failure
+      image: quay.io/konflux-ci/release-service-utils:e633d51cd41d73e4b3310face21bb980af7a662f
+      volumeMounts:
+        - name: slack-token
+          mountPath: "/etc/secrets"
+          readOnly: true
+      env:
+        - name: KEYNAME
+          value: $(params.secretKeyName)
+      script: |
+        #!/usr/bin/env bash
+        set -eux
+
+        if [ -z "${KEYNAME}" ] ; then
+          echo "No secret key name provided via 'slack.slack-webhook-notification-secret-keyname' key in Data."
+          echo "No message will be sent to Slack"
+          exit
+        fi
+
+        if [ -f "/etc/secrets/${KEYNAME}" ]; then
+          WEBHOOK_URL=$(cat "/etc/secrets/${KEYNAME}")
+        else
+          echo "Error: Secret not defined properly. The key to use (${KEYNAME}) is defined in the Release data \
+              but the Secret does not contain the key"
+          exit 1
+        fi
+
+        # check for release status and check if a managed pipeline failed
+        # TODO: make namespace and release parameters
+        RELEASESTATUS=$(get-resource "release" $(params.RELEASE) | jq .status.conditions[].reason)
+
+        if [[ "$RELEASESTATUS" == *"Failed"* ]]; then
+          MESSAGE=$(get-resource "release" $(params.RELEASE) | jq -r .status.conditions[].message | awk NF)
+          
+          # need 3 back-ticks around message for code-block
+          MESSAGE=$(echo "Managed pipelines failed: \`\`\`$MESSAGE\`\`\`" | jq -Rsa)
+          
+          cat > /tmp/release.json << EOF
+        {"text": $MESSAGE}
+        EOF
+          # line above needs to be missing indentation
+
+          cat /tmp/release.json
+
+          curl  -H "Content-type: application/json" --data-binary "@/tmp/release.json"  \
+            "${WEBHOOK_URL}"
+        else
+          echo "All pipelines succeeded."
+        fi
+  workspaces:
+    - name: data
+      description: The workspace where the data json file resides
