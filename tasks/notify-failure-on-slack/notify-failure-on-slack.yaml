@@ -16,7 +16,7 @@ spec:
     # - name: namespace
     #   description: Namespace of release
     # - name: namespace
-    #   description: Namespace of release
+    #   description: Namespace of releas
   volumes:
     - name: slack-token
       secret:
