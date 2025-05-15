@@ -16,6 +16,19 @@
 # or
 #
 # ./test_tekton_tasks.sh mydir/tasks/apply-mapping some/other/dir
+#
+# This script will also run any individual tests provided 
+# either via TEST_ITEMS env var, or as arguments
+# when running the script.
+# 
+# Examples of usage:
+# export TEST_ITEMS="mydir/tasks/apply-mapping/tests/tests-apply-mapping-sample.yaml some/other/dir"
+# ./test_tekton_tasks.sh
+#
+# or
+#
+# ./test_tekton_tasks.sh mydir/tasks/apply-mapping/tests/tests-apply-mapping-sample.yaml some/other/dir
+
 
 # yield empty strings for unmatched patterns
 shopt -s nullglob
@@ -60,7 +73,7 @@ for ITEM in $TEST_ITEMS
 do
   echo Task item: $ITEM
   TASK_NAME=$(echo $ITEM | cut -d '/' -f 2)
-  TASK_DIR=$(echo $ITEM | cut -d '/' -f -3)
+  TASK_DIR=$(echo $ITEM | cut -d '/' -f -2)
   echo "  Task name: $TASK_NAME"
 
   TASK_PATH=${TASK_DIR}/${TASK_NAME}.yaml
