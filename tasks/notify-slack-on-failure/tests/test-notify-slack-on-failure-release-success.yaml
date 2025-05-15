@@ -2,16 +2,16 @@
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: test-notify-failure-on-slack-release-success
+  name: test-notify-slack-on-failure-release-success
 spec:
   description: |
-    Run the notify-failure-on-slack task and verify the results when a release succeeds
+    Run the notify-slack-on-failure task and verify the results when a release succeeds
   workspaces:
     - name: tests-workspace
   tasks:
     - name: run-task
       taskRef:
-        name: notify-failure-on-slack
+        name: notify-slack-on-failure
       params:
         - name: secretName
           value: "my-secret"

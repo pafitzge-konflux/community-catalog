@@ -2,10 +2,10 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: notify-failure-on-slack
+  name: notify-slack-on-failure
 spec:
   description: >-
-    Sends message to Slack using postMessage API
+    Sends message to Slack using postMessage API if managed pipelines fail
   params:
     - name: secretName
       description: Name of secret which contains authentication token for app
